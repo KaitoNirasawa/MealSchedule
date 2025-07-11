@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>家族の食事予定（完全版）</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 10px;
+      font-size: 16px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    th {
+      background: #f0f0f0;
+    }
+    button {
+      font-size: 16px;
+      margin: 5px 0;
+      cursor: pointer;
+    }
+    .hidden {
+      display: none;
+    }
+    .note-button {
+      margin-left: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .detail-row {
+      background: #fafafa;
+    }
+    .detail-box {
+      padding: 10px;
+      font-size: 14px;
+      text-align: left;
+    }
+    /* スマホ対応 */
+    @media screen and (max-width: 600px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      thead tr {
+        display: none;
+      }
+      tr {
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        padding: 6px;
+      }
+      td {
+        border: none;
+        padding: 4px 8px;
+        position: relative;
+        text-align: left;
+      }
+      td::before {
+        content: attr(data-label);
+        font-weight: bold;
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h2>家族の食事予定（完全版）</h2>
+  <label>名前:
+    <select id="nameSelect">
+      <option value="Kと">Kと</option>
+      <option value="Tし">Tし</option>
+      <option value="Aり">Aり</option>
+      <option value="Yこ">Yこ</option>
+    </select>
+  </label>
+  <button id="registerBtn" onclick="toggleRegistration()">登録</button>
+  <button id="saveBtn" class="hidden" onclick="saveData()">保存</button>
+
+  <table id="mealTable">
+    <thead>
+      <tr>
+        <th>日付</th>
+        <th>朝</th>
+        <th>昼</th>
+        <th>夜</th>
+      </tr>
+    </thead>
+    <tbody id="mealBody"></tbody>
+  </table>
+
+  <script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxeG4ZFstT4bu9O0rUlrT9_LDH2HJOG6-I6q3NTgTwqagy0HbLxGEjNYDX7JkhrbRTc/exec';
+
+    const members = ['Kと', 'Tし', 'Aり', 'Yこ'];
+    let data = {};  // { '日付': { 朝: [], 昼: [], 夜: [], 備考: {キー:内容} } }
+    let isRegistering = false;
+    let openDetailDate = null;
+
+    async function fetchData() {
+      try {
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error('データ取得失敗: ' + res.status);
+        const rows = await res.json();
+        data = {};
+        rows.forEach(({date, meal, name, note}) => {
+          if (!data[date]) data[date] = { 朝: [], 昼: [], 夜: [], 備考: {} };
+          data[date][meal].push(name);
+          if (note) data[date].備考[`${date}_${meal}_${name}`] = note;
+        });
+        renderTable();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    function getDateString(offset) {
+      const date = new Date();
+      date.setDate(date.getDate() + offset);
+      const weekday = ['日','月','火','水','木','金','土'][date.getDay()];
+      return `${date.getMonth()+1}/${date.getDate()}（${weekday}）`;
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('mealBody');
+      tbody.innerHTML = '';
+      const name = document.getElementById('nameSelect').value;
+
+      for(let i=0; i<10; i++){
+        const dateStr = getDateString(i);
+        if(!data[dateStr]){
+          data[dateStr] = { 朝: [], 昼: [], 夜: [], 備考: {} };
+        }
+
+        // メイン行
+        const row = document.createElement('tr');
+        if(isRegistering){
+          const renderCell = (meal) => {
+            const checked = data[dateStr][meal].includes(name) ? 'checked' : '';
+            const noteKey = `${dateStr}_${meal}_${name}`;
+            return `<input type="checkbox" data-date="${dateStr}" data-meal="${meal}" ${checked}>` +
+                   `<button class="note-button" onclick="openNotePopup('${noteKey}')">備考</button>`;
+          };
+          row.innerHTML = `
+            <td data-label="日付">${dateStr}</td>
+            <td data-label="朝">${renderCell('朝')}</td>
+            <td data-label="昼">${renderCell('昼')}</td>
+            <td data-label="夜">${renderCell('夜')}</td>
+          `;
+        } else {
+          row.innerHTML = `
+            <td data-label="日付"><button onclick="toggleDetail('${dateStr}')">${dateStr}</button></td>
+            <td data-label="朝">${data[dateStr].朝.length}人</td>
+            <td data-label="昼">${data[dateStr].昼.length}人</td>
+            <td data-label="夜">${data[dateStr].夜.length}人</td>
+          `;
+        }
+        tbody.appendChild(row);
+
+        // 詳細行
+        if(openDetailDate === dateStr && !isRegistering){
+          const detailRow = document.createElement('tr');
+          detailRow.classList.add('detail-row');
+          detailRow.innerHTML = `<td colspan="4" class="detail-box">${generateDetailHtml(dateStr)}</td>`;
+          tbody.appendChild(detailRow);
+        }
+      }
+    }
+
+    function toggleRegistration(){
+      isRegistering = !isRegistering;
+      document.getElementById('registerBtn').classList.toggle('hidden', isRegistering);
+      document.getElementById('saveBtn').classList.toggle('hidden', !isRegistering);
+      openDetailDate = null;
+      renderTable();
+    }
+
+    function openNotePopup(key){
+      const currentNote = data[getDateFromKey(key)].備考[key] || '';
+      const input = prompt('備考を入力してください', currentNote);
+      if(input !== null){
+        data[getDateFromKey(key)].備考[key] = input;
+      }
+    }
+
+    function getDateFromKey(key){
+      return key.split('_')[0];
+    }
+
+    function toggleDetail(dateStr){
+      openDetailDate = (openDetailDate === dateStr) ? null : dateStr;
+      renderTable();
+    }
+
+    async function saveData(){
+      const name = document.getElementById('nameSelect').value;
+      const checkboxes = document.querySelectorAll('input[type=checkbox][data-date]');
+      
+      // 一旦その人のデータ削除
+      for(const date in data){
+        ['朝','昼','夜'].forEach(meal => {
+          data[date][meal] = data[date][meal].filter(n => n !== name);
+          // 備考も削除（備考は登録時にセットし直すため）
+          const noteKeyPrefix = `${date}_${meal}_${name}`;
+          Object.keys(data[date].備考).forEach(k => {
+            if(k.startsWith(noteKeyPrefix)) delete data[date].備考[k];
+          });
+        });
+      }
+
+      // チェックボックスの内容を反映
+      checkboxes.forEach(cb => {
+        if(cb.checked){
+          const date = cb.dataset.date;
+          const meal = cb.dataset.meal;
+          const noteKey = `${date}_${meal}_${name}`;
+          if(!data[date]) data[date] = { 朝: [], 昼: [], 夜: [], 備考: {} };
+          data[date][meal].push(name);
+          data[date].備考[noteKey] = cb.dataset.note || '';
+        }
+      });
+
+      // 送信用配列に展開
+      const sendData = [];
+      for(const date in data){
+        ['朝','昼','夜'].forEach(meal => {
+          data[date][meal].forEach(name => {
+            const noteKey = `${date}_${meal}_${name}`;
+            const note = data[date].備考[noteKey] || '';
+            sendData.push({date, meal, name, note});
+          });
+        });
+      }
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(sendData)
+        });
+        const text = await res.text();
+        if(text.trim() !== 'success') throw new Error(text);
+        alert('保存しました');
+        isRegistering = false;
+        document.getElementById('registerBtn').classList.remove('hidden');
+        document.getElementById('saveBtn').classList.add('hidden');
+        fetchData();
+      } catch(err) {
+        alert('保存に失敗しました: ' + err.message);
+      }
+    }
+
+    fetchData();
+  </script>
+</body>
+</html>
