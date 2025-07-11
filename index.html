@@ -95,7 +95,7 @@
 
   <script>
     const members = ['Kと', 'Tし', 'Aり', 'Yこ'];
-    const API_URL = 'https://script.google.com/macros/s/AKfycbwExnk8yEU3NibetVgCiGPNfvXFbw0Ab6QTvKrkxgmiiu4I4bI1itVCHPebslnqPYY/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbwXseD82-TjZ5zl3h8uctcwBw6NgDY1QfTR73uJlVKlmCTxrA0HQYtNBqFovbpCQDzq/exec';
     let data = {};  // { '日付': { 朝: [], 昼: [], 夜: [], 備考: {} } }
     let isRegistering = false;
     let openDetailDate = null;
@@ -157,7 +157,7 @@
       try {
         await fetch(API_URL, {
           method: 'POST',
-          mode: 'no-cors',
+          mode: 'cors',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(allRows)
         });
