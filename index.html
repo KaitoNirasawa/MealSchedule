@@ -1,31 +1,75 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>家族の食事予定</title>
-<style>
-  body { font-family: sans-serif; margin: 10px; font-size: 16px; }
-  table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
-  th { background: #f0f0f0; }
-  button, select { font-size: 16px; }
-  .hidden { display: none; }
-  .note-button { margin-left: 4px; font-size: 12px; cursor: pointer; }
-  .detail-row { background: #fafafa; }
-  .detail-box { padding: 10px; font-size: 14px; text-align: left; }
-  @media screen and (max-width: 600px) {
-    table, thead, tbody, th, td, tr { display: block; }
-    thead tr { display: none; }
-    tr { margin-bottom: 10px; border: 1px solid #ccc; padding: 6px; }
-    td { border: none; padding: 4px 8px; position: relative; text-align: left; }
-    td::before { content: attr(data-label); font-weight: bold; display: block; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>家族の食事予定</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 10px;
+      font-size: 16px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: center;
+    }
+    th {
+      background: #f0f0f0;
+    }
+    select, textarea, button {
+      font-size: 16px;
+    }
+    .hidden {
+      display: none;
+    }
+    .note-button {
+      margin-left: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .detail-row {
+      background: #fafafa;
+    }
+    .detail-box {
+      padding: 10px;
+      font-size: 14px;
+      text-align: left;
+    }
+    @media screen and (max-width: 600px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      thead tr {
+        display: none;
+      }
+      tr {
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        padding: 6px;
+      }
+      td {
+        border: none;
+        padding: 4px 8px;
+        position: relative;
+        text-align: left;
+      }
+      td::before {
+        content: attr(data-label);
+        font-weight: bold;
+        display: block;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h2>家族の食事予定（10日分）</h2>
-
+  <h2 style="font-size:18px">家族の食事予定（10日分）</h2>
   <label>名前:
     <select id="nameSelect">
       <option value="Kと">Kと</option>
@@ -37,7 +81,7 @@
   <button id="registerBtn" onclick="toggleRegistration()">登録</button>
   <button id="saveBtn" class="hidden" onclick="saveData()">保存</button>
 
-  <table id="mealTable" aria-label="食事予定テーブル">
+  <table id="mealTable">
     <thead>
       <tr>
         <th>日付</th>
@@ -50,25 +94,15 @@
   </table>
 
   <script>
-    const API_URL = 'ここにGoogle Apps ScriptのウェブアプリURLを貼ってください';
     const members = ['Kと', 'Tし', 'Aり', 'Yこ'];
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxeG4ZFstT4bu9O0rUlrT9_LDH2HJOG6-I6q3NTgTwqagy0HbLxGEjNYDX7JkhrbRTc/exec';
     let data = {};  // { '日付': { 朝: [], 昼: [], 夜: [], 備考: {} } }
     let isRegistering = false;
     let openDetailDate = null;
 
-    // 日付文字列を作成（例：7/11（木））
-    function getDateString(offset) {
-      const date = new Date();
-      date.setDate(date.getDate() + offset);
-      const wdays = ['日', '月', '火', '水', '木', '金', '土'];
-      return `${date.getMonth() + 1}/${date.getDate()}（${wdays[date.getDay()]}）`;
-    }
-
-    // データ取得
     async function fetchData() {
       try {
         const res = await fetch(API_URL);
-        if (!res.ok) throw new Error('データ取得失敗');
         const rows = await res.json();
         data = {};
         rows.forEach(({date, meal, name, note}) => {
@@ -78,94 +112,97 @@
         });
         renderTable();
       } catch (err) {
-        alert('データの取得に失敗しました。');
-        console.error(err);
+        console.error('データ取得失敗', err);
       }
     }
 
-    // 保存処理
     async function saveData() {
-      const name = document.getElementById('nameSelect').value;
-      const checkboxes = document.querySelectorAll('input[type="checkbox"][data-date]');
+      const name = document.getElementById("nameSelect").value;
+      const checkboxes = document.querySelectorAll("input[type='checkbox'][data-date]");
 
-      // 登録者の既存データを一旦クリア
       for (let i = 0; i < 10; i++) {
         const dateStr = getDateString(i);
-        ['朝', '昼', '夜'].forEach(meal => {
-          const idx = data[dateStr][meal].indexOf(name);
-          if (idx !== -1) data[dateStr][meal].splice(idx, 1);
+        ['朝','昼','夜'].forEach(meal => {
           const noteKey = `${dateStr}_${meal}_${name}`;
           delete data[dateStr].備考[noteKey];
+          const index = data[dateStr][meal].indexOf(name);
+          if (index !== -1) data[dateStr][meal].splice(index, 1);
         });
       }
 
-      // チェックされた箇所を追加
       checkboxes.forEach(cb => {
+        const date = cb.dataset.date;
+        const meal = cb.dataset.meal;
+        const list = data[date][meal];
+        const noteKey = `${date}_${meal}_${name}`;
+
         if (cb.checked) {
-          const date = cb.dataset.date;
-          const meal = cb.dataset.meal;
-          const noteKey = `${date}_${meal}_${name}`;
-          if (!data[date][meal].includes(name)) data[date][meal].push(name);
-          const note = cb.dataset.note || '';
+          if (!list.includes(name)) list.push(name);
+          const note = cb.dataset.note || "";
           if (note) data[date].備考[noteKey] = note;
         }
       });
 
-      // 送信用データに変換
       const allRows = [];
       Object.keys(data).forEach(date => {
-        ['朝', '昼', '夜'].forEach(meal => {
+        ['朝','昼','夜'].forEach(meal => {
           data[date][meal].forEach(name => {
             const noteKey = `${date}_${meal}_${name}`;
-            allRows.push({ date, meal, name, note: data[date].備考[noteKey] || '' });
+            const note = data[date].備考[noteKey] || "";
+            allRows.push({date, meal, name, note});
           });
         });
       });
 
       try {
-        const res = await fetch(API_URL, {
+        await fetch(API_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          mode: 'no-cors',
+          headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(allRows)
         });
-        if (!res.ok) throw new Error('保存に失敗しました');
-        const resJson = await res.json();
-        if (resJson.result !== 'success') throw new Error('サーバーエラー');
-        alert('保存しました');
-        toggleRegistration(false);
+        isRegistering = false;
+        document.getElementById("registerBtn").classList.remove("hidden");
+        document.getElementById("saveBtn").classList.add("hidden");
         fetchData();
       } catch (err) {
-        alert(err.message || '保存時にエラーが発生しました');
+        alert("保存に失敗しました");
         console.error(err);
       }
     }
 
-    // テーブル描画
+    function getDateString(offset) {
+      const date = new Date();
+      date.setDate(date.getDate() + offset);
+      const weekday = ['日','月','火','水','木','金','土'][date.getDay()];
+      return `${date.getMonth() + 1}/${date.getDate()}（${weekday}）`;
+    }
+
     function renderTable() {
-      const tbody = document.getElementById('mealBody');
-      tbody.innerHTML = '';
-      const name = document.getElementById('nameSelect').value;
+      const tbody = document.getElementById("mealBody");
+      tbody.innerHTML = "";
+      const name = document.getElementById("nameSelect").value;
 
       for (let i = 0; i < 10; i++) {
         const dateStr = getDateString(i);
         if (!data[dateStr]) {
           data[dateStr] = { 朝: [], 昼: [], 夜: [], 備考: {} };
         }
-        const row = document.createElement('tr');
+        const row = document.createElement("tr");
 
         if (isRegistering) {
-          // チェックボックス＋備考ボタン表示
-          const createCell = meal => {
+          const renderCell = (meal) => {
             const checked = data[dateStr][meal].includes(name) ? 'checked' : '';
-            return `
-              <td data-label="${meal}">
-                <input type="checkbox" data-date="${dateStr}" data-meal="${meal}" ${checked} />
-                <button class="note-button" onclick="openNotePopup('${dateStr}','${meal}','${name}')">備考</button>
-              </td>`;
+            const noteKey = `${dateStr}_${meal}_${name}`;
+            return `<input type="checkbox" data-date="${dateStr}" data-meal="${meal}" ${checked}>` +
+                   `<button class="note-button" onclick="openNotePopup('${noteKey}')">備考</button>`;
           };
-
-          row.innerHTML = `<td data-label="日付">${dateStr}</td>` +
-            createCell('朝') + createCell('昼') + createCell('夜');
+          row.innerHTML = `
+            <td data-label="日付">${dateStr}</td>
+            <td data-label="朝">${renderCell('朝')}</td>
+            <td data-label="昼">${renderCell('昼')}</td>
+            <td data-label="夜">${renderCell('夜')}</td>
+          `;
         } else {
           row.innerHTML = `
             <td data-label="日付"><button onclick="toggleDetail('${dateStr}')">${dateStr}</button></td>
@@ -176,21 +213,60 @@
         }
         tbody.appendChild(row);
 
-        // 詳細行（登録モードでないときのみ表示）
         if (openDetailDate === dateStr && !isRegistering) {
-          const detailRow = document.createElement('tr');
-          detailRow.className = 'detail-row';
+          const detailRow = document.createElement("tr");
+          detailRow.classList.add("detail-row");
           detailRow.innerHTML = `<td colspan="4" class="detail-box">${generateDetailHtml(dateStr)}</td>`;
           tbody.appendChild(detailRow);
         }
       }
     }
 
-    // 登録モード切替
-    function toggleRegistration(forceOff) {
-      if (typeof forceOff === 'boolean') {
-        isRegistering = !forceOff;
-      } else {
-        isRegistering = !isRegistering;
+    function toggleRegistration() {
+      isRegistering = !isRegistering;
+      document.getElementById("registerBtn").classList.toggle("hidden", isRegistering);
+      document.getElementById("saveBtn").classList.toggle("hidden", !isRegistering);
+      openDetailDate = null;
+      renderTable();
+    }
+
+    function openNotePopup(key) {
+      const current = data[getDateFromKey(key)].備考[key] || "";
+      const input = prompt("備考を入力してください：", current);
+      if (input !== null) {
+        data[getDateFromKey(key)].備考[key] = input;
       }
-      document.getElementById('registerBtn').
+    }
+
+    function getDateFromKey(key) {
+      return key.split("_")[0];
+    }
+
+    function toggleDetail(dateStr) {
+      if (openDetailDate === dateStr) {
+        openDetailDate = null;
+      } else {
+        openDetailDate = dateStr;
+      }
+      renderTable();
+    }
+
+    function generateDetailHtml(dateStr) {
+      const d = data[dateStr];
+      let html = `<h3>${dateStr}の詳細</h3>`;
+      ['朝', '昼', '夜'].forEach(meal => {
+        html += `<strong>${meal}</strong><ul>`;
+        d[meal].forEach(name => {
+          const noteKey = `${dateStr}_${meal}_${name}`;
+          const note = d.備考[noteKey] ? `（${d.備考[noteKey]}）` : "";
+          html += `<li>${name}${note}</li>`;
+        });
+        html += `</ul>`;
+      });
+      return html;
+    }
+
+    fetchData();
+  </script>
+</body>
+</html>
