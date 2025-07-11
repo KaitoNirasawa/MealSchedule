@@ -95,7 +95,7 @@
 
   <script>
     const members = ['Kと', 'Tし', 'Aり', 'Yこ'];
-    const API_URL = 'https://script.google.com/macros/s/AKfycbwDcfYm6K-zY6xt-pL2l45V8P2tqtjIMXxj8JFvPAFdEJEjz1JCsKKmTtxKo1kIvdQw/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxeG4ZFstT4bu9O0rUlrT9_LDH2HJOG6-I6q3NTgTwqagy0HbLxGEjNYDX7JkhrbRTc/exec';
     let data = {};  // { '日付': { 朝: [], 昼: [], 夜: [], 備考: {} } }
     let isRegistering = false;
     let openDetailDate = null;
@@ -138,7 +138,7 @@
 
         if (cb.checked) {
           if (!list.includes(name)) list.push(name);
-          const note = cb.dataset.note || "";
+          const note = data[date].備考[noteKey] || "";
           if (note) data[date].備考[noteKey] = note;
         }
       });
@@ -161,10 +161,16 @@
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(allRows)
         });
+
         isRegistering = false;
         document.getElementById("registerBtn").classList.remove("hidden");
         document.getElementById("saveBtn").classList.add("hidden");
-        fetchData();
+
+        setTimeout(() => {
+          fetchData();
+          alert("保存しました！");
+        }, 1000);
+
       } catch (err) {
         alert("保存に失敗しました");
         console.error(err);
