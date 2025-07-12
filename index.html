@@ -95,8 +95,8 @@
 
   <script>
     const members = ['Kと', 'Tし', 'Aり', 'Yこ'];
-    const API_URL = 'https://script.google.com/macros/s/AKfycbxu-PStQ342qvNzMylGY3GIFudj26D608HYlRiDYK5tV0P3xaVgDiUwxu07IQvqjgU/exec';
-    let data = {};  // { '日付': { 朝: [], 昼: [], 夜: [], 備考: {} } }
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxeG4ZFstT4bu9O0rUlrT9_LDH2HJOG6-I6q3NTgTwqagy0HbLxGEjNYDX7JkhrbRTc/exec';
+    let data = {};
     let isRegistering = false;
     let openDetailDate = null;
 
@@ -124,9 +124,11 @@
         const dateStr = getDateString(i);
         ['朝','昼','夜'].forEach(meal => {
           const noteKey = `${dateStr}_${meal}_${name}`;
-          delete data[dateStr].備考[noteKey];
-          const index = data[dateStr][meal].indexOf(name);
-          if (index !== -1) data[dateStr][meal].splice(index, 1);
+          if (data[dateStr]) {
+            delete data[dateStr].備考[noteKey];
+            const index = data[dateStr][meal].indexOf(name);
+            if (index !== -1) data[dateStr][meal].splice(index, 1);
+          }
         });
       }
 
@@ -155,24 +157,24 @@
       });
 
       try {
-        await fetch(API_URL, {
+        const res = await fetch(API_URL, {
           method: 'POST',
           mode: 'cors',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(allRows)
         });
-
-        isRegistering = false;
-        document.getElementById("registerBtn").classList.remove("hidden");
-        document.getElementById("saveBtn").classList.add("hidden");
-
-        setTimeout(() => {
+        const text = await res.text();
+        if (text.includes("success")) {
+          isRegistering = false;
+          document.getElementById("registerBtn").classList.remove("hidden");
+          document.getElementById("saveBtn").classList.add("hidden");
           fetchData();
           alert("保存しました！");
-        }, 1000);
-
+        } else {
+          throw new Error(text);
+        }
       } catch (err) {
-        alert("保存に失敗しました");
+        alert("保存に失敗しました\n" + err);
         console.error(err);
       }
     }
